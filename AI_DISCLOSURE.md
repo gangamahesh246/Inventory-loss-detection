@@ -1,85 +1,119 @@
 # AI Use Disclosure
 
-As per the YottaFlex guidelines, this file explains how I used AI while
-building this project, where it helped me go faster, where I relied on it,
-and what I checked or changed myself.
+As per the YottaFlex guidelines, this document explains how I used an LLM while building the Inventory Loss Detection System, which parts it helped me implement faster, what I reviewed and corrected myself, and how I verified the final solution.
 
-## Tool used
+## Tool Used
 
-- **Claude** via the `opencode` CLI (model `glm-5.2`).
-- I did not use any other AI tool. All my prompts are in
-  [`prompts/PROMPT_HISTORY.md`](prompts/PROMPT_HISTORY.md).
+- **LLM:** GLM-5.2 via the OpenCode CLI.
+- I did not use any other AI tool.
+- My complete implementation prompts are available in [PROMPT_HISTORY.md](https://github.com/gangamahesh246/Inventory-loss-detection/blob/main/prompts/PROMPT_HISTORY.md).
 
-## Where AI helped me go faster
+## How I Directed the Implementation
 
-- **Setting up the project** — making the folder structure, the config file,
-  and the ID helper functions (`ids.py`).
-- **Boilerplate code** — writing the enum lists (`enums.py`) and the data
-  dictionary (`docs/data_dictionary.md`) from the spec.
-- **Pandas tricks** — using `merge_asof` to find the expected stock as of a
-  count date, and using `SeedSequence.spawn` so each table gets its own random
-  stream.
-- **First draft** — the first version of `generate.py`, `validate.py`,
-  `detect.py`, and `evaluate.py`.
-- **Writing the README** and this file.
+I first studied the complete problem statement and identified the entities, relationships, business rules, data generation requirements, edge cases, and validation requirements.
 
-## Where I relied on AI more
+I then defined the implementation approach and instructed the LLM to follow it step by step.
 
-- The first full draft of the generator. After that I fixed the bugs myself
-  (see below).
+My main technical decisions were:
 
-## What I checked and changed myself
+- **Programming language:** Python for data generation, inventory calculations, anomaly detection, and validation.
+- **Database:** SQLite using Python's built-in `sqlite3` library.
+- **Detection approach:** Rule-based detection with explainable scores between 0 and 1 instead of machine learning.
+- **Data generation:** Generate master records first, followed by dependent transactions using valid parent IDs.
+- **Dataset scale:** Use a small starter dataset by default and generate the full dataset only when requested.
+- **Reproducibility:** Use a fixed random seed (`20261022`) for consistent data generation.
+- **Ground truth:** Maintain a separate dataset for known anomalies and normal business cases.
+- **Validation:** Check relationships, inventory reconciliation, edge cases, and detection performance.
 
-I read every line of code and changed many of them. Here are the main fixes I
-made after the AI's first draft:
+I also provided specific instructions for implementing the inventory calculation, anomaly detection rules, exception handling, investigation records, exports, and final validation.
 
-1. **Wrong key name** — the code looked up `transferout` but the config key
-   was `transfer_out`. I added a mapping so they match.
-2. **Sort error** — `merge_asof` needs both sides sorted. I fixed the sort
-   calls and ran again until it worked.
-3. **Negative stock** — sales were bigger than receipts so stock went
-   negative, which is not real. I made stock stop at zero (a store cannot
-   have less than zero items). I did this in both the generator and the
-   validator.
-4. **Missing column** — the detector needed `destination_store_id` to catch
-   the wrong-store bug. I added this column and made it empty for non-transfers.
-5. **Benign cases were wrong** — the first version paired counts with damage
-   rows at the wrong store and SKU. I rewrote it so each count matches a real
-   damage or return at the same store and SKU, in the lookback window.
-6. **Two planted bugs were missed** — two counts I planted as unexplained loss
-   were skipped by the detector because a transfer happened to fall in the
-   same window. I added a check so the two rules do not overlap.
-7. **Full-scale check failed** — the wrong-store bug sent transfers to stores
-   that do not carry that SKU. I changed it to pick from stores that do carry
-   the SKU, so the only bug is the wrong destination.
-8. **I ran and checked the whole thing** at both small and full scale. I
-   looked at the validation report (46 out of 46 pass), the scores
-   (precision, recall, and F1 all 1.0), the reproducibility check (same
-   checksums both runs), and the tests (15 out of 15 pass).
-9. **I cleaned the repo** for GitHub — added `.gitignore`, removed generated
-   data and cache files, and made sure the pipeline still runs after cleanup.
+## Where the LLM Helped Me Go Faster
 
-## How I verified it works
+I used the LLM mainly to speed up implementation based on the requirements and technical approach I provided.
 
-- `python run_all.py --scale starter` — all 4 steps pass, F1 = 1.0.
-- `python run_all.py --scale full` — 1,050,199 movements and 20,080 counts,
-  all 4 steps pass, precision 1.0, recall 1.0, F1 1.0.
-- `python run_all.py --check-repro` — all 10 CSV files have the same SHA-256
-  checksum across two runs with seed `20261022`.
-- `python -m pytest tests/` — 15 out of 15 tests pass.
+- **Project setup:** Helped create the project structure, configuration, and ID generation utilities.
+- **Database and documentation:** Helped define entity structures, enums, relationships, and the data dictionary.
+- **Data generation:** Helped implement synthetic data generation for stores, products, employees, movements, and cycle counts.
+- **Inventory calculations:** Helped implement stock balance calculations and use Pandas operations such as `merge_asof`.
+- **Reproducibility:** Helped implement separate random streams using NumPy's `SeedSequence.spawn`.
+- **Detection logic:** Helped implement the rule-based anomaly detection and alert generation.
+- **Validation and evaluation:** Helped write validation checks and calculate precision, recall, F1-score, and other metrics.
+- **Documentation:** Helped prepare the README and project documentation.
 
-## Limits of the AI help
+## Where I Relied on the LLM More
 
-- The AI could not open the two YottaFlex PDF files directly (it does not
-  support PDF). I pulled the text out myself using a Python library called
-  `pdfplumber`, read the rules, and followed them.
-- I always checked the AI's output against the spec and the actual run
-  results before keeping it. I did not accept any AI output blindly.
+I relied more on the LLM during the first implementation of the synthetic data generator and the initial versions of the main processing modules.
 
-## I own this work
+However, I did not accept the generated code without checking it. I reviewed the implementation, ran the pipeline, identified issues, and made corrections based on the actual business requirements.
 
-I understand the core logic, the main design choices (rule-based detection,
-separate ground truth, fixed seed for reproducibility, stock equation
-check), the dependencies (pandas, numpy, PyYAML, and the built-in sqlite3),
-and the limits (see the "Limitations" part of the README). I can explain any
-part of the solution.
+## What I Reviewed and Changed Myself
+
+After reviewing the generated implementation and running the pipeline, I identified and fixed several issues:
+
+1. **Incorrect movement key:** The transfer-out configuration key did not match the key used in the code. I added the required mapping to make them consistent.
+
+2. **Sorting issue:** The `merge_asof` operation required both datasets to be sorted correctly. I corrected the sorting logic and tested it again.
+
+3. **Negative inventory:** Some generated sales exceeded available stock. I corrected the generator and validator so that inventory does not become negative.
+
+4. **Missing destination field:** The detector needed `destination_store_id` to identify incorrect transfer destinations. I added the field and kept it empty for non-transfer movements.
+
+5. **Incorrect legitimate cases:** Some damage and return records were linked to cycle counts from different stores or SKUs. I corrected the generation logic so that each case matches the same store and SKU within the required lookback period.
+
+6. **Overlapping anomaly cases:** Two planted unexplained-loss cases were missed because transfers existed in the same detection window. I adjusted the rules to prevent these cases from overlapping.
+
+7. **Full-scale data issue:** Some wrong-store transfer cases referenced stores that did not carry the related SKU. I corrected the generation logic so that the test isolates the intended wrong-destination issue.
+
+8. **End-to-end verification:** I ran the pipeline at starter and full scale, reviewed the validation results, checked detection metrics, and verified reproducibility.
+
+9. **Repository cleanup:** I added `.gitignore`, removed generated data and cache files, and checked that the pipeline still worked after cleanup.
+
+## How I Verified the Solution
+
+I ran the following commands and checked their results:
+
+**Starter dataset**
+
+- Command: `python run_all.py --scale starter`
+- All four pipeline steps passed.
+- F1-score: 1.0.
+
+**Full dataset**
+
+- Command: `python run_all.py --scale full`
+- Generated 1,050,199 inventory movements and 20,080 cycle counts.
+- All four pipeline steps passed.
+- Precision: 1.0.
+- Recall: 1.0.
+- F1-score: 1.0.
+
+**Reproducibility**
+
+- Command: `python run_all.py --check-repro`
+- Verified that all 10 CSV files produced matching SHA-256 checksums across two runs using seed `20261022`.
+
+**Automated tests**
+
+- Command: `python -m pytest tests/`
+- Result: 15 out of 15 tests passed.
+
+**Data validation**
+
+- The validation report showed 46 out of 46 checks passing.
+
+## Ownership and Understanding
+
+I take responsibility for the final implementation and understand the main design decisions and business logic.
+
+I can explain:
+
+- How the ten entities are connected.
+- How synthetic inventory data is generated.
+- How expected stock balances and variances are calculated.
+- How the rule-based detection system identifies unusual inventory loss.
+- How ground-truth labels are separated from detection inputs.
+- How validation and evaluation metrics are calculated.
+- How fixed-seed generation ensures reproducibility.
+- What limitations remain in the current solution.
+
+I used the LLM as a development assistant to implement and review the solution based on the requirements, methods, and instructions I defined.
