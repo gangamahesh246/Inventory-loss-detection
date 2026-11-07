@@ -1,0 +1,74 @@
+# Inventory Loss Detection - generator configuration
+# All sizes share the SAME generator; only counts change.
+
+seed: 20261022            # master seed (fixed for reproducibility)
+
+date_range:
+  start: "2026-01-01"
+  end: "2026-10-31"
+
+# Two scales. Starter is the default (fast). Full is the requested volume.
+scales:
+  starter:
+    stores: 10
+    skus: 500
+    movements: 50000
+    cycle_counts: 1000
+  full:
+    stores: 100
+    skus: 5000
+    movements: 1000000
+    cycle_counts: 20000
+
+# Share of each store that actively carries a given SKU (catalog coverage).
+catalog_coverage: 0.70
+
+# Movement type mix (transfer_in is generated 1:1 with transfer_out, not listed).
+movement_mix:
+  sale: 0.61
+  receipt: 0.13
+  transfer_out: 0.05
+  return: 0.06
+  damage: 0.04
+  adjustment: 0.06
+
+# Quantity ranges per movement type (units).
+quantity_ranges:
+  sale: [1, 6]
+  receipt: [6, 40]
+  transfer_out: [2, 20]
+  return: [1, 4]
+  damage: [1, 8]
+  adjustment: [-5, 5]
+
+# How many planted anomalies per scale. Benign variances are added on top.
+anomaly_counts:
+  starter:
+    wrong_store_ref: 5
+    missing_reason: 10
+    count_timing_conflict: 5
+    transfer_double_shrink: 4
+    repeated_adjustments: 3
+    unexplained_loss: 10
+  full:
+    wrong_store_ref: 50
+    missing_reason: 100
+    count_timing_conflict: 50
+    transfer_double_shrink: 40
+    repeated_adjustments: 30
+    unexplained_loss: 100
+
+# Benign (non-theft) variances added so the detector must NOT flag everything.
+benign_counts:
+  starter:
+    explained_damage: 15
+  full:
+    explained_damage: 150
+
+# Detection thresholds (used by detect.py).
+detection:
+  repeated_adjustment_window_days: 10
+  repeated_adjustment_min_count: 5
+  unexplained_loss_threshold: -5      # variance below this with no explanation
+  unexplained_lookback_days: 14
+  transfer_variance_tolerance: 1      # |variance - (-transfer_qty)| <= this

@@ -1,0 +1,5 @@
+pandas>=2.0
+numpy>=1.24
+PyYAML>=6.0
+# pytest is only needed to run the test suite:
+# pytest>=7.0
